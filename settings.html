@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="js/settings_manager.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Spending Journey</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Load settings FIRST to prevent flash -->
+<style>
+        :root {
+            --petrol-blue: #2C3E50;
+            --sage-green: #76937C;
+            --bg-light: #f4f7f6;
+            --sidebar-width: 280px;
+        }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: var(--bg-light); display: flex; overflow-x: hidden; }
+        .sidebar {
+            width: var(--sidebar-width); height: 100vh; background: white; border-right: 1px solid #eee;
+            position: fixed; top: 0; left: calc(var(--sidebar-width) * -1); 
+            z-index: 3000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;
+        }
+        .sidebar.active { left: 0; }
+        [dir="rtl"] .sidebar { left: auto; right: calc(var(--sidebar-width) * -1); }
+        [dir="rtl"] .sidebar.active { right: 0; left: auto; }
+        .user-profile-section { display: flex; align-items: center; gap: 15px; padding: 20px 10px; margin-bottom: 20px; }
+        .user-avatar-circle { width: 50px; height: 50px; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #888; }
+        .nav-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .nav-item { display: flex; align-items: center; gap: 15px; padding: 12px 15px; color: #666; text-decoration: none; border-radius: 12px; margin-bottom: 5px; transition: 0.3s; }
+        .nav-item:hover, .nav-item.active { background-color: #f0f4f2; color: var(--sage-green); font-weight: 500; }
+        .sign-out { color: #e74c3c; margin-top: auto; border-top: 1px solid #eee; padding-top: 15px; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: none; z-index: 2500; }
+        .overlay.active { display: block; }
+        .main-wrapper { width: 100%; }
+        header { background-color: var(--sage-green); height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; color: white; }
+        .container { display: flex; justify-content: center; align-items: center; padding: 40px 20px; min-height: calc(100vh - 70px); }
+        .settings-card { background: white; width: 100%; max-width: 600px; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; }
+        .settings-header { font-size: 32px; color: #555; margin-bottom: 40px; font-weight: 300; }
+        .settings-section { background-color: #f1f1f1; border-radius: 15px; padding: 25px; margin-bottom: 25px; text-align: left; }
+        [dir="rtl"] .settings-section { text-align: right; }
+        .section-title { font-size: 18px; color: #444; margin-bottom: 5px; display: block; }
+        .section-desc { font-size: 13px; color: #888; margin-bottom: 20px; display: block; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .option-btn { background: white; border: 1.5px solid #ddd; padding: 12px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; font-size: 14px; color: #555; transition: 0.3s; }
+        .option-btn:hover { border-color: var(--sage-green); background: #f9fbf9; }
+        .option-btn.active { border-color: var(--sage-green); background: #f0f4f2; color: var(--sage-green); font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="user-profile-section">
+            <div class="user-avatar-circle"><i class="fas fa-user fa-lg"></i></div>
+            <div>
+                <div id="ownerNameSide" style="font-weight: bold; color: var(--petrol-blue);">—</div>
+                <small style="color: #999;" data-i18n="system_admin">System Admin</small>
+            </div>
+        </div>
+        <nav class="nav-menu">
+            <a href="home.html" class="nav-item"><i class="fas fa-home"></i> <span data-i18n="nav_home">Home Page</span></a>
+            <a href="search.html" class="nav-item"><i class="fas fa-search"></i> <span data-i18n="nav_search">Search Page</span></a>
+            <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_analytics">Analytics Page</span></a>
+            <a href="profile.html" class="nav-item"><i class="fas fa-user"></i> <span data-i18n="nav_profile">Profile Page</span></a>
+            <a href="settings.html" class="nav-item active"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Settings Page</span></a>
+            <a href="login.html" class="nav-item sign-out"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_signout">Sign out</span></a>
+        </nav>
+    </aside>
+    <div class="main-wrapper">
+        <header>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i class="fas fa-bars" style="cursor: pointer; font-size: 20px;" onclick="toggleSidebar()"></i>
+                <span style="font-size: 20px; font-weight: 500;" data-i18n="title_settings">Settings</span>
+            </div>
+            <div style="width: 35px; height: 35px; border: 1.5px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user"></i></div>
+        </header>
+        <div class="container">
+            <div class="settings-card">
+                <div class="settings-header" data-i18n="setting_title">Settings</div>
+                <div class="settings-section">
+                    <span class="section-title" data-i18n="lang_title">Language settings</span>
+                    <span class="section-desc" data-i18n="lang_desc">Choose your favourite system language</span>
+                    <div class="options-grid">
+                        <button class="option-btn" id="btn-lang-ar" onclick="selectLanguage('ar')">
+                            <i class="fas fa-globe"></i> <span data-i18n="lang_arabic">Arabic</span>
+                        </button>
+                        <button class="option-btn" id="btn-lang-en" onclick="selectLanguage('en')">
+                            <i class="fas fa-globe"></i> <span data-i18n="lang_english">English</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <span class="section-title" data-i18n="appear_title">Appearance</span>
+                    <span class="section-desc" data-i18n="appear_desc">Customise the system's appearance to suit your preferences</span>
+                    <div class="options-grid">
+                        <button class="option-btn" id="btn-light" onclick="selectTheme(false)">
+                            <i class="fas fa-sun"></i> <span data-i18n="light_mode">Light Mode</span>
+                        </button>
+                        <button class="option-btn" id="btn-dark" onclick="selectTheme(true)">
+                            <i class="fas fa-moon"></i> <span data-i18n="dark_mode">Dark Mode</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        async function loadSidebarName() {
+            try {
+                const res  = await fetch('php/get_profile.php');
+                const data = await res.json();
+                if (data.facility_name) {
+                    const el = document.getElementById('ownerNameSide');
+                    if (el) { el.textContent = data.facility_name; }
+                }
+            } catch(e) {}
+        }
+        loadSidebarName();
+        function selectLanguage(lang) {
+            SettingsManager.setLanguage(lang);
+            updateActiveButtons();
+        }
+        function selectTheme(isDark) {
+            SettingsManager.setDarkMode(isDark);
+            updateActiveButtons();
+        }
+        function updateActiveButtons() {
+            const lang = SettingsManager.getLanguage();
+            const dark = SettingsManager.isDarkMode();
+            document.getElementById('btn-lang-ar').classList.toggle('active', lang === 'ar');
+            document.getElementById('btn-lang-en').classList.toggle('active', lang === 'en');
+            document.getElementById('btn-light').classList.toggle('active', !dark);
+            document.getElementById('btn-dark').classList.toggle('active', dark);
+        }
+        document.addEventListener('DOMContentLoaded', updateActiveButtons);
+    </script>
+    <script>
+        // Re-apply language after full page render
+        (function(){
+            var lang = localStorage.getItem("sj_language") || "en";
+            if(window.SettingsManager) SettingsManager.applyLanguage(lang);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="js/settings_manager.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - Spending Journey</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/home.css">
+<style>
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: none; z-index: 2500; }
+        .overlay.active { display: block; }
+
+        #invoiceModal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
+        #invoiceModal.show { display: flex; }
+
+        .modal-box {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            width: 90%;
+            max-width: 480px;
+            position: relative;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute; top: 18px; right: 22px;
+            font-size: 26px; cursor: pointer; color: #b0bbc4;
+            background: none; border: none; line-height: 1;
+        }
+        .modal-close:hover { color: #e74c3c; }
+
+        .inv-title { text-align: center; font-size: 22px; font-weight: 900; color: var(--petrol-blue); letter-spacing: 2px; margin-bottom: 5px; }
+        .inv-subtitle { text-align: center; font-size: 13px; color: #a1aeb8; margin-bottom: 25px; }
+
+        .inv-info-grid { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 10px; }
+        .inv-info-block p { margin: 4px 0; font-size: 13px; color: #666; }
+        .inv-info-block strong { color: var(--petrol-blue); }
+
+        .inv-divider { border: none; border-top: 1px dashed #eee; margin: 15px 0; }
+
+        .inv-item-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; border-bottom: 1px solid #f9f9f9; }
+        .inv-item-name { color: #555; }
+        .inv-item-qty { color: #a1aeb8; font-size: 12px; margin-top: 2px; }
+        .inv-item-price { font-weight: 700; color: var(--petrol-blue); }
+
+        .inv-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 15px; border-top: 2px solid #f0f0f0; }
+        .inv-total-label { font-size: 16px; font-weight: 800; color: var(--petrol-blue); }
+        .inv-total-value { font-size: 22px; font-weight: 900; color: var(--sage-green); }
+
+        .modal-print-btn {
+            width: 100%; background: var(--sage-green); color: white; border: none;
+            padding: 14px; border-radius: 25px; cursor: pointer; font-weight: 700;
+            font-size: 15px; margin-top: 20px; display: flex; align-items: center;
+            justify-content: center; gap: 8px;
+        }
+        .modal-print-btn:hover { background: #6a8470; }
+
+        .loading-spinner { text-align: center; padding: 40px; color: #a1aeb8; }
+        .loading-spinner i { font-size: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="user-profile-side">
+            <div class="profile-icon-placeholder"><i class="fas fa-user"></i></div>
+            <div class="info">
+                <span id="ownerName" style="font-weight: bold; color: var(--petrol-blue); font-size: 18px; display: block;" data-i18n="home_loading">Loading...</span>
+                <span style="font-size: 12px; color: #888;" data-i18n="store_owner">Store Owner</span>
+            </div>
+        </div>
+        <nav class="nav-menu">
+            <a href="home.html" class="nav-item active"><i class="fas fa-home"></i> <span data-i18n="nav_home">Home Page</span></a>
+            <a href="search.html" class="nav-item"><i class="fas fa-search"></i> <span data-i18n="nav_search">Search Page</span></a>
+            <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_analytics">Analytics Page</span></a>
+            <a href="profile.html" class="nav-item"><i class="fas fa-user"></i> <span data-i18n="nav_profile">Profile Page</span></a>
+            <a href="settings.html" class="nav-item"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Settings Page</span></a>
+            <a href="login.html" class="nav-item sign-out"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_signout">Sign out</span></a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper" style="width: 100%;">
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor: pointer;"></i>
+                <span data-i18n="title_home">Welcome to Owner Portal</span>
+            </div>
+            <div class="search-container">
+                <div class="search-bar">
+                    <i class="fas fa-search" style="color: #ccc;"></i>
+                    <input type="text" id="searchInput" data-i18n-placeholder="home_search_placeholder" placeholder="Search by client name or invoice ID...">
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="profile-circle-white"><i class="fas fa-user"></i></div>
+            </div>
+        </header>
+
+        <div class="table-card">
+            <table id="ownerTable">
+                <thead>
+                    <tr>
+                        <th data-i18n="th_invoice"># Invoice</th>
+                        <th data-i18n="th_client">Client Name</th>
+                        <th data-i18n="th_amount">Amount</th>
+                        <th data-i18n="th_action">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="ownerInvoicesBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="invoiceModal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalContent">
+                <div class="loading-spinner"><i class="fas fa-spinner"></i><p data-i18n="modal_loading">Loading invoice...</p></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchOwnerInvoices();
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('#ownerInvoicesBody tr').forEach(row => {
+                    const clientName = row.children[1].textContent.toLowerCase();
+                    const invoiceId  = row.children[0].textContent.toLowerCase();
+                    row.style.display = (clientName.includes(term) || invoiceId.includes(term)) ? '' : 'none';
+                });
+            });
+
+            const _origSetLang = SettingsManager.setLanguage.bind(SettingsManager);
+            SettingsManager.setLanguage = function(lang) {
+                _origSetLang(lang);
+                const inp = document.getElementById('searchInput');
+                if (inp) inp.placeholder = SettingsManager.getT('home_search_placeholder');
+                fetchOwnerInvoices();
+            };
+        });
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        async function fetchOwnerInvoices() {
+            try {
+                const response = await fetch('php/owner_api.php');
+                const data = await response.json();
+                if (data.error === "no_session") { window.location.href = "login.html"; return; }
+
+                const nameEl = document.getElementById('ownerName');
+                if (nameEl) {
+                    nameEl.removeAttribute('data-i18n');
+                    try {
+                        const pRes  = await fetch('php/get_profile.php');
+                        const pData = await pRes.json();
+                        if (pData.facility_name) nameEl.textContent = pData.facility_name;
+                    } catch(e) {}
+                }
+                const tbody = document.getElementById('ownerInvoicesBody');
+                tbody.innerHTML = '';
+                data.forEach(inv => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${inv.display_id}</td>
+                            <td>${inv.client}</td>
+                            <td>${inv.amount} SAR</td>
+                            <td><button class="open-btn" onclick="openInvoiceModal(${inv.real_id})">${SettingsManager.getT('srch_card_open')}</button></td>
+                        </tr>`;
+                });
+            } catch (err) { console.error("Error:", err); }
+        }
+
+        async function openInvoiceModal(invoiceId) {
+            const modal   = document.getElementById('invoiceModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.add('show');
+            content.innerHTML = `<div class="loading-spinner"><i class="fas fa-spinner"></i><p>${SettingsManager.getT('modal_loading')}</p></div>`;
+
+            try {
+                const res   = await fetch(`php/owner_api.php?details_id=${invoiceId}`);
+                const data  = await res.json();
+                const info  = data.info;
+                const items = data.items || [];
+
+                const dateStr = info.invoice_date || '';
+                const dayStr  = info.invoice_day  || '';
+                const timeStr = info.invoice_time  || '';
+
+                const itemsHtml = items.length > 0
+                    ? items.map(item => `
+                        <div class="inv-item-row">
+                            <div>
+                                <div class="inv-item-name">${item.product_name}</div>
+                                <div class="inv-item-qty">${SettingsManager.getT('modal_qty')}: ${item.quantity}</div>
+                            </div>
+                            <div class="inv-item-price">${parseFloat(item.subtotal).toFixed(2)} SAR</div>
+                        </div>`).join('')
+                    : `<p style="color:#ccc; text-align:center; padding:15px;">${SettingsManager.getT('modal_no_items')}</p>`;
+
+                content.innerHTML = `
+                    <div id="invoice-printable">
+                        <div class="inv-title">${SettingsManager.getT('modal_tax_invoice')}</div>
+                        <div class="inv-subtitle">INV-${1000 + parseInt(info.invoice_id)}</div>
+
+                        <div style="text-align:center; margin-bottom:20px; font-size:13px; color:#a1aeb8;">
+                            ${dateStr}
+                            ${dayStr  ? ` &nbsp;·&nbsp; <i class="fas fa-calendar-day"></i> ${dayStr}`  : ''}
+                            ${timeStr ? ` &nbsp;·&nbsp; <i class="fas fa-clock"></i> ${timeStr}` : ''}
+                        </div>
+
+                        <div class="inv-info-grid">
+                            <div class="inv-info-block">
+                                <p><strong>${SettingsManager.getT('modal_customer')}:</strong> ${info.First_name} ${info.Last_name}</p>
+                                <p><strong>${SettingsManager.getT('modal_payment')}:</strong> ${info.payment_method || '—'}</p>
+                            </div>
+                        </div>
+
+                        <hr class="inv-divider">
+
+                        <div>${itemsHtml}</div>
+
+                        <div style="margin-top:15px; padding-top:12px; border-top:1px solid #f0f0f0;">
+                            <div style="display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom:6px;">
+                                <span>${SettingsManager.getT('modal_subtotal')}</span>
+                                <span>${parseFloat(info.total_amount / 1.15).toFixed(2)} SAR</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom:12px;">
+                                <span>${SettingsManager.getT('modal_tax')}</span>
+                                <span>${parseFloat(info.tax_amount || 0).toFixed(2)} SAR</span>
+                            </div>
+                        </div>
+
+                        <div class="inv-total-row">
+                            <div class="inv-total-label">${SettingsManager.getT('modal_total')}</div>
+                            <div class="inv-total-value">${parseFloat(info.total_amount).toFixed(2)} SAR</div>
+                        </div>
+                    </div>
+
+                    <button class="modal-print-btn" onclick="downloadPdf('INV-${1000 + parseInt(info.invoice_id)}')">
+                        <i class="fas fa-download"></i> ${SettingsManager.getT('modal_download')}
+                    </button>
+                `;
+            } catch (err) {
+                content.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><h2>${SettingsManager.getT('modal_error')}</h2></div>`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('invoiceModal').classList.remove('show');
+        }
+
+        document.getElementById('invoiceModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        function downloadPdf(filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+            // ── helpers ────
+            const W = 210, margin = 18;
+            let y = 20;
+            const green  = [118, 147, 124];
+            const navy   = [44,  62,  80];
+            const gray   = [120, 120, 120];
+            const ltgray = [220, 220, 220];
+
+            function line(color) {
+                doc.setDrawColor(...color);
+                doc.setLineWidth(0.3);
+                doc.line(margin, y, W - margin, y);
+                y += 5;
+            }
+            function text(str, x, size, color, align) {
+                doc.setFontSize(size || 11);
+                doc.setTextColor(...(color || [50,50,50]));
+                doc.text(String(str || ''), x, y, { align: align || 'left' });
+            }
+            function row2(left, right, size, colorL, colorR) {
+                text(left,  margin,     size || 10, colorL || gray);
+                text(right, W - margin, size || 10, colorR || navy, 'right');
+                y += 6;
+            }
+
+            const el   = document.getElementById('invoice-printable');
+            const invId   = (el.querySelector('.inv-subtitle') || {}).textContent || filename;
+            const dateTxt = (el.querySelector('[style*="text-align:center"]') || {}).textContent || '';
+            const custEl  = el.querySelectorAll('.inv-info-block p');
+            let customer = '', payment = '';
+            custEl.forEach(p => {
+                if (p.textContent.includes(':')) {
+                    const parts = p.textContent.split(':');
+                    const key = parts[0].trim().toLowerCase();
+                    const val = parts.slice(1).join(':').trim();
+                    if (key.includes('customer') || key.includes('عميل') || key.includes('العميل')) customer = val;
+                    if (key.includes('payment') || key.includes('دفع'))   payment  = val;
+                }
+            });
+
+            const itemRows = el.querySelectorAll('.inv-item-row');
+            const items = [];
+            itemRows.forEach(row => {
+                const name  = (row.querySelector('.inv-item-name')  || {}).textContent || '';
+                const qty   = (row.querySelector('.inv-item-qty')   || {}).textContent || '';
+                const price = (row.querySelector('.inv-item-price') || {}).textContent || '';
+                if (name) items.push({ name: name.trim(), qty: qty.replace(/.*:/,'').trim(), price: price.trim() });
+            });
+
+            const subtotalEl = el.querySelectorAll('[style*="justify-content:space-between"]');
+            let subtotal = '', tax = '';
+            subtotalEl.forEach(d => {
+                const spans = d.querySelectorAll('span');
+                if (spans.length >= 2) {
+                    const label = spans[0].textContent.trim().toLowerCase();
+                    const val   = spans[1].textContent.trim();
+                    if (label.includes('sub') || label.includes('قبل')) subtotal = val;
+                    if (label.includes('tax') || label.includes('ضريبة') || label.includes('ضريبه')) tax = val;
+                }
+            });
+            const totalEl = el.querySelector('.inv-total-value');
+            const total   = totalEl ? totalEl.textContent.trim() : '';
+
+            // ── Header bar ─────
+            doc.setFillColor(...green);
+            doc.roundedRect(margin, y, W - margin*2, 22, 4, 4, 'F');
+            doc.setFontSize(16); doc.setTextColor(255,255,255);
+            doc.text('TAX INVOICE', W/2, y+9, { align:'center' });
+            doc.setFontSize(10);
+            doc.text(invId, W/2, y+16, { align:'center' });
+            y += 30;
+
+            // ── Date ──────
+            if (dateTxt.trim()) {
+                doc.setFontSize(9); doc.setTextColor(...gray);
+                doc.text(dateTxt.trim().replace(/\s+/g,' '), W/2, y, { align:'center' });
+                y += 8;
+            }
+
+            // ── Customer / Payment ──
+            line(ltgray);
+            if (customer) row2('Customer:', customer, 10, gray, navy);
+            if (payment)  row2('Payment:',  payment,  10, gray, navy);
+            line(ltgray);
+            y += 2;
+
+            // ── Items header ───
+            doc.setFillColor(245, 248, 246);
+            doc.rect(margin, y-2, W - margin*2, 8, 'F');
+            text('Item', margin+2, 9, navy); text('Qty', W/2, 9, navy, 'center'); text('Amount', W-margin-2, 9, navy, 'right');
+            y += 8;
+
+            // ── Items ────
+            items.forEach((item, i) => {
+                if (i % 2 === 0) {
+                    doc.setFillColor(252,252,252);
+                    doc.rect(margin, y-4, W - margin*2, 8, 'F');
+                }
+                text(item.name,  margin+2,  10, [50,50,50]);
+                text(item.qty,   W/2,       10, gray, 'center');
+                text(item.price, W-margin-2,10, navy, 'right');
+                y += 8;
+            });
+
+            y += 4; line(ltgray);
+
+            // ── Subtotal / Tax / Total ─────
+            if (subtotal) row2('Subtotal:', subtotal, 10, gray, navy);
+            if (tax)      row2('VAT (15%):', tax,     10, gray, navy);
+            y += 2;
+
+            doc.setFillColor(...green);
+            doc.roundedRect(margin, y, W - margin*2, 12, 3, 3, 'F');
+            doc.setFontSize(13); doc.setTextColor(255,255,255);
+            doc.text('Total:', margin+5, y+8);
+            doc.text(total, W-margin-5, y+8, { align:'right' });
+            y += 20;
+
+            // ── Footer ───
+            doc.setFontSize(8); doc.setTextColor(...gray);
+            doc.text('Spending Journey', W/2, y, { align:'center' });
+
+            doc.save(filename + '.pdf');
+        }
+    </script>
+    <script>
+        // Re-apply language after full page render
+        (function(){
+            var lang = localStorage.getItem("sj_language") || "en";
+            if(window.SettingsManager) SettingsManager.applyLanguage(lang);
+        })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="js/electricity_home.js"></script> 
+</body>
+</html>

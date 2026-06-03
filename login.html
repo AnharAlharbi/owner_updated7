@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Spending Journey</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --petrol-blue: #2C3E50;
+            --sage-green: #76937C;
+            --warm-gray: #F4F7F6;
+            --error-red: #e74c3c;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: white; overflow: hidden;
+        }
+
+        .main-container {
+            position: relative; height: 100vh; width: 100%;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .background-layers {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+        }
+
+        .layer-1 { fill: #E5EBE8; } .layer-2 { fill: #CBD6D0; }
+        .layer-3 { fill: #A4B9AD; } .layer-4 { fill: #7E998B; }
+        .layer-5 { fill: var(--sage-green); }
+
+        .lang-toggle {
+            position: absolute; top: 20px; left: 40px; z-index: 100;
+            display: flex; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+        }
+
+        html[dir="rtl"] .lang-toggle { left: auto; right: 40px; }
+
+        .lang-btn {
+            padding: 8px 20px; font-size: 13px; font-weight: bold;
+            border: none; cursor: pointer; transition: all 0.3s ease;
+            background-color: white; color: var(--petrol-blue);
+        }
+
+        .lang-btn.active { background-color: var(--sage-green); color: white; }
+        .lang-btn:hover:not(.active) { background-color: #f0f4f2; }
+
+        .login-card {
+            position: relative; z-index: 10; background: white;
+            padding: 40px; border-radius: 24px; width: 90%;
+            max-width: 420px; box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .back-btn {
+            display: block; text-decoration: none;
+            color: var(--sage-green); font-size: 14px; margin-bottom: 20px;
+            font-weight: bold; transition: 0.3s;
+        }
+
+        html[dir="ltr"] .back-btn { text-align: left; }
+        html[dir="rtl"] .back-btn { text-align: right; }
+        .back-btn:hover { color: var(--petrol-blue); }
+
+        .login-card h2 { color: var(--petrol-blue); font-size: 28px; margin: 0 0 10px 0; }
+        .login-card p { color: #666; font-size: 14px; margin-bottom: 30px; }
+
+        .input-group { margin-bottom: 20px; }
+        .input-group label {
+            display: block; font-size: 13px; font-weight: bold;
+            color: var(--petrol-blue); margin-bottom: 8px;
+        }
+
+        html[dir="ltr"] .input-group { text-align: left; }
+        html[dir="rtl"] .input-group { text-align: right; }
+
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+
+        .input-wrapper i.main-icon {
+            position: absolute; left: 15px; color: #aaa; font-size: 16px;
+        }
+
+        html[dir="rtl"] .input-wrapper i.main-icon { left: auto; right: 15px; }
+
+        .input-wrapper input {
+            width: 100%; padding: 12px 45px 12px 45px;
+            border: 1.5px solid #E0E0E0; border-radius: 12px;
+            outline: none; font-size: 15px; transition: 0.3s;
+            box-sizing: border-box;
+        }
+
+        html[dir="rtl"] .input-wrapper input { text-align: right; }
+
+        .input-wrapper input:focus {
+            border-color: var(--sage-green); background-color: #fafafa;
+        }
+
+        .toggle-password {
+            position: absolute; right: 15px; cursor: pointer;
+            color: #aaa; transition: 0.3s; z-index: 11;
+        }
+
+        html[dir="rtl"] .toggle-password { right: auto; left: 15px; }
+        .toggle-password:hover { color: var(--sage-green); }
+
+        .options {
+            display: flex; justify-content: flex-end; align-items: center;
+            font-size: 13px; margin-bottom: 25px; color: #666;
+        }
+
+        html[dir="rtl"] .options { justify-content: flex-start; }
+
+        .login-btn {
+            width: 100%; background-color: var(--sage-green); color: white;
+            border: none; padding: 15px; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+
+        .login-btn:hover { background-color: #5f7a64; transform: translateY(-2px); }
+
+        .signup-link { margin-top: 20px; font-size: 14px; color: #666; }
+        .signup-link a { color: var(--sage-green); text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="background-layers">
+        <svg viewBox="0 0 1440 800" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+            <path class="layer-1" d="M0,400 Q400,300 1440,500 L1440,800 L0,800 Z" />
+            <path class="layer-2" d="M0,500 Q500,400 1440,600 L1440,800 L0,800 Z" />
+            <path class="layer-3" d="M0,600 Q600,500 1440,700 L1440,800 L0,800 Z" />
+            <path class="layer-4" d="M0,700 Q700,650 1440,750 L1440,800 L0,800 Z" />
+            <path class="layer-5" d="M0,750 Q800,730 1440,780 L1440,800 L0,800 Z" />
+        </svg>
+    </div>
+
+    <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-ar" onclick="setLang('ar')">عربي</button>
+        <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+
+    <div class="login-card">
+        <a href="index.html" class="back-btn" id="backBtn"></a>
+        <h2 id="loginTitle"></h2>
+        <p id="loginSubtitle"></p>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <label id="emailLabel"></label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-envelope main-icon"></i>
+                    <input type="email" id="emailInput" required>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label id="passLabel"></label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock main-icon"></i>
+                    <input type="password" id="passInput" placeholder="••••••••" required>
+                    <i class="fa-solid fa-eye toggle-password" id="toggleEye"></i>
+                </div>
+            </div>
+
+            <div class="options">
+                <a href="forgot_password.html" style="color: var(--sage-green); text-decoration: none;" id="forgotLink"></a>
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn"></button>
+        </form>
+
+        <div class="signup-link" id="signupLink"></div>
+    </div>
+</div>
+
+<script>
+    const translations = {
+        ar: {
+            dir: 'rtl', lang: 'ar',
+            backBtn: '<i class="fa-solid fa-arrow-right"></i> رجوع',
+            loginTitle: 'أهلاً بعودتك',
+            loginSubtitle: 'سجّل دخولك إلى حسابك',
+            emailLabel: 'البريد الإلكتروني',
+            emailPlaceholder: 'example@mail.com',
+            passLabel: 'كلمة المرور',
+            forgotLink: 'نسيت كلمة المرور؟',
+            loginBtn: 'تسجيل الدخول',
+            signupLink: 'ليس لديك حساب؟ <a href="signup.html">إنشاء حساب</a>'
+        },
+        en: {
+            dir: 'ltr', lang: 'en',
+            backBtn: '<i class="fa-solid fa-arrow-left"></i> Back',
+            loginTitle: 'Welcome Back',
+            loginSubtitle: 'Login to your account',
+            emailLabel: 'Email Address',
+            emailPlaceholder: 'example@mail.com',
+            passLabel: 'Password',
+            forgotLink: 'Forgot Password?',
+            loginBtn: 'Login',
+            signupLink: "Don't have an account? <a href='signup.html'>Sign up</a>"
+        }
+    };
+
+    function setLang(lang) {
+        const t = translations[lang];
+        document.documentElement.setAttribute('lang', t.lang);
+        document.documentElement.setAttribute('dir', t.dir);
+        document.getElementById('backBtn').innerHTML = t.backBtn;
+        document.getElementById('loginTitle').textContent = t.loginTitle;
+        document.getElementById('loginSubtitle').textContent = t.loginSubtitle;
+        document.getElementById('emailLabel').textContent = t.emailLabel;
+        document.getElementById('emailInput').placeholder = t.emailPlaceholder;
+        document.getElementById('passLabel').textContent = t.passLabel;
+        document.getElementById('forgotLink').textContent = t.forgotLink;
+        document.getElementById('loginBtn').textContent = t.loginBtn;
+        document.getElementById('signupLink').innerHTML = t.signupLink;
+        document.getElementById('btn-ar').classList.toggle('active', lang === 'ar');
+        document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+        localStorage.setItem('lang', lang);
+    }
+
+    setLang(localStorage.getItem('lang') || 'ar');
+
+    // Toggle password
+    const toggleEye = document.getElementById('toggleEye');
+    const passInput = document.getElementById('passInput');
+    toggleEye.addEventListener('click', function() {
+        const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passInput.setAttribute('type', type);
+        this.classList.toggle('fa-eye');
+        this.classList.toggle('fa-eye-slash');
+    });
+
+    // Login form
+    document.getElementById('loginForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const email = document.getElementById('emailInput').value;
+        const password = passInput.value;
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('password', password);
+        try {
+            const response = await fetch('login_process.php', { method: 'POST', body: formData });
+            const result = (await response.text()).trim();
+            const lang = localStorage.getItem('lang') || 'ar';
+            if (result === "success") {
+                window.location.href = "home.html";
+            } else if (result === "email_not_found") {
+                alert(lang === 'ar' ? " هذا البريد غير مسجّل في النظام." : " This email is not registered.");
+            } else if (result === "wrong_password") {
+                alert(lang === 'ar' ? " كلمة المرور غير صحيحة. حاول مجدداً." : " Incorrect password. Please try again.");
+            } else {
+                alert(result);
+            }
+        } catch (error) {
+            const lang = localStorage.getItem('lang') || 'ar';
+            alert(lang === 'ar' ? "فشل الاتصال. تأكد من تشغيل XAMPP." : "Connection failed. Please ensure your XAMPP server is running.");
+        }
+    });
+</script>
+</body>
+</html>

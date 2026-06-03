@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="js/settings_manager.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Page - Spending Journey</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @media print {
+            body > *:not(#print-area) { display: none !important; }
+            #print-area { display: block !important; position: static !important; }
+        }
+        #print-area { display: none; }
+    </style>
+    <style>
+        :root {
+            --petrol-blue: #2C3E50;
+            --sage-green: #76937C;
+            --light-gray: #f4f7f6;
+            --sidebar-width: 280px;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light-gray);
+            display: flex;
+            overflow-x: hidden;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            border-right: 1px solid #eee;
+            position: fixed;
+            top: 0;
+            left: calc(var(--sidebar-width) * -1);
+            z-index: 3000;
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .sidebar.active { left: 0; }
+        [dir="rtl"] .sidebar { left: auto; right: calc(var(--sidebar-width) * -1); }
+        [dir="rtl"] .sidebar.active { right: 0; left: auto; }
+
+        .user-profile-side {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            padding: 10px;
+        }
+
+        .profile-icon-placeholder {
+            width: 45px; height: 45px;
+            background-color: #eee;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            color: #777;
+        }
+
+        .nav-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 15px;
+            padding: 12px 15px; margin-bottom: 5px;
+            color: #777; text-decoration: none; border-radius: 10px; transition: 0.3s;
+        }
+
+        .nav-item.active { background-color: #f0f4f2; color: var(--sage-green); }
+        .nav-item:hover { background-color: #f9f9f9; color: var(--sage-green); }
+
+        .sign-out { margin-top: auto; color: #e74c3c; border-top: 1px solid #eee; padding-top: 15px; }
+
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: none; z-index: 2500; }
+        .overlay.active { display: block; }
+
+        header {
+            background-color: var(--sage-green);
+            height: 70px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 30px; width: 100%; color: white; box-sizing: border-box;
+        }
+
+        .search-container { position: relative; width: 450px; }
+        .search-bar {
+            background: white; border-radius: 25px;
+            padding: 6px 15px; display: flex; align-items: center;
+        }
+        .search-bar input { border: none; outline: none; width: 100%; margin-left: 10px; font-size: 14px; color: #333; }
+        .filter-btn { background: none; border: none; color: #ccc; cursor: pointer; padding: 5px; font-size: 18px; }
+
+        .filter-dropdown {
+            position: absolute; top: 55px; right: 0;
+            width: 320px; background: white; border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            padding: 20px; display: none; z-index: 4000; color: #333;
+        }
+        .filter-dropdown.show { display: block; }
+
+        .filter-section { margin-bottom: 20px; }
+        .filter-section label { display: block; font-size: 12px; color: #888; margin-bottom: 8px; font-weight: 600; }
+        .filter-section input[type="date"], .filter-section select {
+            width: 100%; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 13px;
+        }
+
+        .amount-inputs { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .amount-input-wrap { flex: 1; position: relative; }
+        .amount-input-wrap input {
+            width: 100%; padding: 9px 36px 9px 10px; border: 1.5px solid #eee;
+            border-radius: 8px; outline: none; font-size: 13px; color: #444;
+            box-sizing: border-box; transition: 0.2s;
+        }
+        .amount-input-wrap input:focus { border-color: var(--sage-green); background: #fafafa; }
+        .amount-input-wrap .sar-label {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            font-size: 11px; color: #aaa; font-weight: 600; pointer-events: none;
+        }
+        .amount-sep { font-size: 18px; color: #ccc; font-weight: 300; flex-shrink: 0; }
+
+        .apply-btn {
+            width: 100%; background: var(--sage-green); color: white; border: none;
+            padding: 12px; border-radius: 25px; cursor: pointer; font-weight: bold; margin-top: 10px;
+        }
+
+        .profile-circle-white {
+            width: 38px; height: 38px;
+            background-color: rgba(255,255,255,0.2);
+            border: 1.5px solid white; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; color: white;
+        }
+
+        .content-area {
+            padding: 30px;
+            flex-grow: 1;
+            min-height: calc(100vh - 70px);
+        }
+
+        .results-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .results-count {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        .invoice-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 25px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid transparent;
+        }
+        .invoice-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+            border-color: #e0ebe3;
+        }
+
+        .card-col { flex: 1; }
+        .card-col-label { font-size: 11px; color: #a1aeb8; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-col-value { font-size: 14px; font-weight: 700; color: var(--petrol-blue); }
+        .card-col-sub { font-size: 11px; color: #a1aeb8; margin-top: 3px; }
+
+        .open-badge {
+            background: #e8f3eb;
+            color: var(--sage-green);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .open-badge:hover { background: #d0e8d6; }
+
+        .empty-state {
+            text-align: center;
+            color: #ccc;
+            padding: 80px 20px;
+        }
+        .empty-state i { font-size: 70px; margin-bottom: 20px; }
+        .empty-state h2 { font-size: 20px; margin-bottom: 8px; color: #bbb; }
+        .empty-state p { font-size: 14px; }
+
+        #invoiceModal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
+        #invoiceModal.show { display: flex; }
+
+        .modal-box {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            width: 90%;
+            max-width: 480px;
+            position: relative;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute; top: 18px; right: 22px;
+            font-size: 26px; cursor: pointer; color: #b0bbc4;
+            background: none; border: none; line-height: 1;
+        }
+        .modal-close:hover { color: #e74c3c; }
+
+        .inv-title { text-align: center; font-size: 22px; font-weight: 900; color: var(--petrol-blue); letter-spacing: 2px; margin-bottom: 5px; }
+        .inv-subtitle { text-align: center; font-size: 13px; color: #a1aeb8; margin-bottom: 25px; }
+
+        .inv-info-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        .inv-info-block p { margin: 4px 0; font-size: 13px; color: #666; }
+        .inv-info-block strong { color: var(--petrol-blue); }
+
+        .inv-divider { border: none; border-top: 1px dashed #eee; margin: 15px 0; }
+
+        .inv-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 14px;
+            border-bottom: 1px solid #f9f9f9;
+        }
+        .inv-item-name { color: #555; }
+        .inv-item-qty { color: #a1aeb8; font-size: 12px; margin-top: 2px; }
+        .inv-item-price { font-weight: 700; color: var(--petrol-blue); }
+
+        .inv-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            padding-top: 15px;
+            border-top: 2px solid #f0f0f0;
+        }
+        .inv-total-label { font-size: 16px; font-weight: 800; color: var(--petrol-blue); }
+        .inv-total-value { font-size: 22px; font-weight: 900; color: var(--sage-green); }
+
+        .modal-print-btn {
+            width: 100%;
+            background: var(--sage-green);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 15px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .modal-print-btn:hover { background: #6a8470; }
+
+        /* Loading spinner */
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: #a1aeb8;
+        }
+        .loading-spinner i { font-size: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .search-container { width: 200px; }
+            .content-area { padding: 15px; }
+            .invoice-card { flex-wrap: wrap; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="user-profile-side">
+            <div class="profile-icon-placeholder"><i class="fas fa-user"></i></div>
+            <div>
+                <span id="ownerNameSide" style="font-weight: bold; color: var(--petrol-blue); font-size: 18px; display: block;">—</span>
+                <span style="font-size: 12px; color: #888;" data-i18n="system_admin">System Admin</span>
+            </div>
+        </div>
+        <nav class="nav-menu">
+            <a href="home.html" class="nav-item"><i class="fas fa-home"></i> <span data-i18n="nav_home">Home Page</span></a>
+            <a href="search.html" class="nav-item active"><i class="fas fa-search"></i> <span data-i18n="nav_search">Search Page</span></a>
+            <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_analytics">Analytics Page</span></a>
+            <a href="profile.html" class="nav-item"><i class="fas fa-user"></i> <span data-i18n="nav_profile">Profile Page</span></a>
+            <a href="settings.html" class="nav-item"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Settings Page</span></a>
+            <a href="login.html" class="nav-item sign-out"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_signout">Sign out</span></a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper" style="width: 100%;">
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor: pointer;"></i>
+                <span style="font-weight: 500;" data-i18n="title_search">Search</span>
+            </div>
+
+            <div class="search-container">
+                <div class="search-bar">
+                    <i class="fas fa-search" style="color: #ccc;"></i>
+                    <input type="text" id="searchInp" data-i18n-placeholder="srch_placeholder" placeholder="Search by name or invoice number...">
+                    <button class="filter-btn" onclick="toggleFilter(event)"><i class="fas fa-sliders-h"></i></button>
+                </div>
+
+                <div class="filter-dropdown" id="filterDropdown">
+                    <div style="font-weight: bold; margin-bottom: 15px; font-size: 16px;" data-i18n="srch_advanced">Advanced Search</div>
+
+                    <div class="filter-section">
+                        <label><i class="far fa-calendar-alt"></i> <span data-i18n="srch_date">Date</span></label>
+                        <select id="dateFilter">
+                            <option value="all_time" data-i18n-val="srch_all_time">All Time</option>
+                            <option value="this_week" selected data-i18n-val="srch_this_week">This Week</option>
+                            <option value="this_month" data-i18n-val="srch_this_month">This Month</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-section">
+                        <label><i class="far fa-credit-card"></i> <span data-i18n="srch_payment">Payment Method</span></label>
+                        <select id="paymentFilter">
+                            <option value="all_methods" data-i18n-val="srch_all_methods">All Methods</option>
+                            <option value="cash" data-i18n-val="srch_cash">Cash</option>
+                            <option value="mada" data-i18n-val="srch_mada">Mada Card</option>
+                            <option value="installments" data-i18n-val="srch_install">Installments</option>
+                            <option value="apple_pay" data-i18n-val="srch_apple">Apple Pay</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-section">
+                        <label><i class="fas fa-coins"></i> <span data-i18n="srch_amount_range">Amount Range (SAR)</span></label>
+                        <div class="amount-inputs">
+                            <div class="amount-input-wrap">
+                                <input type="number" id="minRange" min="0" value="" placeholder="0" data-i18n-placeholder="srch_min">
+                                <span class="sar-label">SAR</span>
+                            </div>
+                            <span class="amount-sep">—</span>
+                            <div class="amount-input-wrap">
+                                <input type="number" id="maxRange" min="0" value="" placeholder="10000" data-i18n-placeholder="srch_max">
+                                <span class="sar-label">SAR</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="apply-btn" onclick="applyFilters()" data-i18n="srch_apply">Apply Filters</button>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="text-align: right;">
+                    <b id="ownerNameHeader" style="font-size: 13px; display: block;" data-i18n="srch_sys_admin">System Administrator</b>
+                    <small style="font-size: 10px; opacity: 0.8;" data-i18n="srch_admin_portal">Admin Portal</small>
+                </div>
+                <div class="profile-circle-white"><i class="fas fa-user"></i></div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="results-wrapper">
+                <div class="results-count" id="resultsCount"></div>
+                <div id="searchResultsContainer">
+                    <!-- initial empty state -->
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <h2 data-i18n="srch_empty_title">Search for Invoices</h2>
+                        <p data-i18n="srch_empty_sub">Loading your invoices...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="invoiceModal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalContent">
+                <div class="loading-spinner"><i class="fas fa-spinner"></i><p>Loading...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allInvoices = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSidebarName();
+            loadInvoices();
+
+            document.getElementById('searchInp').addEventListener('input', applyFilters);
+        });
+
+        async function loadInvoices() {
+            try {
+                const res = await fetch("php/owner_api.php");
+                const data = await res.json();
+
+                if (data.error === "no_session") {
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                if (data.error) {
+                    showEmpty(SettingsManager.getT('srch_error_loading'));
+                    return;
+                }
+
+                allInvoices = data;
+                applyFilters();
+
+            } catch (e) {
+                console.error("Fetch error:", e);
+                showEmpty("Connection error. Please check your network.");
+            }
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInp').value.toLowerCase().trim();
+            const dateFilter  = document.getElementById('dateFilter').value;
+            const payFilter   = document.getElementById('paymentFilter').value;
+            const minRaw      = document.getElementById('minRange').value;
+            const maxRaw      = document.getElementById('maxRange').value;
+            const minAmt      = minRaw !== '' ? parseFloat(minRaw) : 0;
+            const maxAmt      = maxRaw !== '' ? parseFloat(maxRaw) : Infinity;
+
+            const today   = new Date();
+            const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7);
+            const monthAgo = new Date(); monthAgo.setMonth(today.getMonth() - 1);
+
+            const filtered = allInvoices.filter(inv => {
+                const fullName   = (inv.client || '').toLowerCase();
+                const invNum     = (inv.display_id || '').toLowerCase();
+                const matchText  = !searchTerm || fullName.includes(searchTerm) || invNum.includes(searchTerm);
+
+                let matchDate = true;
+                if (inv.invoice_date) {
+                    const invDate = new Date(inv.invoice_date);
+                    if (dateFilter === 'this_week')  matchDate = invDate >= weekAgo  && invDate <= today;
+                    if (dateFilter === 'this_month') matchDate = invDate >= monthAgo && invDate <= today;
+                }
+
+                let matchPay = true;
+                if (payFilter !== 'all_methods' && inv.payment_method) {
+                    matchPay = inv.payment_method.toLowerCase().replace(' ', '_') === payFilter;
+                }
+
+                const amount    = parseFloat(inv.total_amount) || 0;
+                const matchAmt  = amount >= minAmt && amount <= maxAmt;
+
+                return matchText && matchDate && matchPay && matchAmt;
+            });
+
+            renderInvoices(filtered);
+
+            document.getElementById('filterDropdown').classList.remove('show');
+        }
+
+        function renderInvoices(list) {
+            const container = document.getElementById('searchResultsContainer');
+            const countEl   = document.getElementById('resultsCount');
+
+            if (list.length === 0) {
+                countEl.textContent = '';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-file-invoice"></i>
+                        <h2>${SettingsManager.getT('srch_no_results_title')}</h2>
+                        <p>${SettingsManager.getT('srch_no_results_sub')}</p>
+                    </div>`;
+                return;
+            }
+
+            countEl.textContent = `${list.length} ${list.length !== 1 ? SettingsManager.getT('srch_found_many') : SettingsManager.getT('srch_found_one')}`;
+
+            container.innerHTML = list.map(inv => {
+                const hasDate = inv.invoice_date && inv.invoice_date !== '';
+                const dateDisplay = hasDate
+                    ? `<div class="card-col-value">${inv.invoice_date}</div>
+                       <div class="card-col-sub">
+                           ${inv.invoice_day ? `<i class="fas fa-calendar-day"></i> ${inv.invoice_day}` : ''}
+                           ${inv.invoice_time ? `&nbsp;&nbsp;<i class="fas fa-clock"></i> ${inv.invoice_time}` : ''}
+                       </div>`
+                    : `<div class="card-col-value">—</div>`;
+
+                return `
+                <div class="invoice-card" onclick="openModal(${inv.real_id})">
+                    <div class="card-col">
+                        <div class="card-col-label">${SettingsManager.getT('srch_card_invoice')}</div>
+                        <div class="card-col-value">${inv.display_id}</div>
+                    </div>
+                    <div class="card-col">
+                        <div class="card-col-label">${SettingsManager.getT('srch_card_client')}</div>
+                        <div class="card-col-value">${inv.client}</div>
+                    </div>
+                    <div class="card-col" style="min-width: 140px;">
+                        <div class="card-col-label">${SettingsManager.getT('srch_card_date')}</div>
+                        ${dateDisplay}
+                    </div>
+                    <div class="card-col">
+                        <div class="card-col-label">${SettingsManager.getT('srch_card_amount')}</div>
+                        <div class="card-col-value">${inv.amount} SAR</div>
+                    </div>
+                    <div>
+                        <button class="open-badge" onclick="event.stopPropagation(); openModal(${inv.real_id})">
+                            ${SettingsManager.getT('srch_card_open')}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function openModal(invoiceId) {
+            const modal = document.getElementById('invoiceModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.add('show');
+            content.innerHTML = `<div class="loading-spinner"><i class="fas fa-spinner"></i><p>${SettingsManager.getT('modal_loading')}</p></div>`;
+
+            try {
+                const res  = await fetch(`php/owner_api.php?details_id=${invoiceId}`);
+                const data = await res.json();
+                const info  = data.info;
+                const items = data.items || [];
+
+                const dateStr = info.invoice_date || '';
+                const dayStr  = info.invoice_day  || '';
+                const timeStr = info.invoice_time  || '';
+
+                const itemsHtml = items.length > 0
+                    ? items.map(item => `
+                        <div class="inv-item-row">
+                            <div>
+                                <div class="inv-item-name">${item.product_name}</div>
+                                <div class="inv-item-qty">${SettingsManager.getT('modal_qty')}: ${item.quantity}</div>
+                            </div>
+                            <div class="inv-item-price">${parseFloat(item.subtotal).toFixed(2)} SAR</div>
+                        </div>`).join('')
+                    : `<p style="color:#ccc; text-align:center; padding:15px;">${SettingsManager.getT('modal_no_items')}</p>`;
+
+                content.innerHTML = `
+                    <div id="invoice-printable">
+                        <div class="inv-title">${SettingsManager.getT('modal_tax_invoice')}</div>
+                        <div class="inv-subtitle">INV-${1000 + parseInt(info.invoice_id)}</div>
+
+                        <div style="text-align:center; margin-bottom:20px; font-size:13px; color:#a1aeb8;">
+                            ${dateStr}
+                            ${dayStr  ? ` &nbsp;·&nbsp; <i class="fas fa-calendar-day"></i> ${dayStr}`  : ''}
+                            ${timeStr ? ` &nbsp;·&nbsp; <i class="fas fa-clock"></i> ${timeStr}` : ''}
+                        </div>
+
+                        <div class="inv-info-grid">
+                            <div class="inv-info-block">
+                                <p><strong>${SettingsManager.getT('modal_customer')}:</strong> ${info.First_name} ${info.Last_name}</p>
+                                <p><strong>${SettingsManager.getT('modal_payment')}:</strong> ${info.payment_method || '—'}</p>
+                            </div>
+                        </div>
+
+                        <hr class="inv-divider">
+
+                        <div>${itemsHtml}</div>
+
+                        <div style="margin-top:15px; padding-top:12px; border-top:1px solid #f0f0f0;">
+                            <div style="display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom:6px;">
+                                <span>${SettingsManager.getT('modal_subtotal')}</span>
+                                <span>${parseFloat(info.total_amount / 1.15).toFixed(2)} SAR</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom:12px;">
+                                <span>${SettingsManager.getT('modal_tax')}</span>
+                                <span>${parseFloat(info.tax_amount || 0).toFixed(2)} SAR</span>
+                            </div>
+                        </div>
+
+                        <div class="inv-total-row">
+                            <div class="inv-total-label">${SettingsManager.getT('modal_total')}</div>
+                            <div class="inv-total-value">${parseFloat(info.total_amount).toFixed(2)} SAR</div>
+                        </div>
+                    </div>
+
+                    <button class="modal-print-btn" onclick="downloadPdf('INV-${1000 + parseInt(info.invoice_id)}')">
+                        <i class="fas fa-download"></i> ${SettingsManager.getT('modal_download')}
+                    </button>
+                `;
+            } catch (err) {
+                content.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><h2>${SettingsManager.getT('modal_error')}</h2></div>`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('invoiceModal').classList.remove('show');
+        }
+
+        document.getElementById('invoiceModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        function downloadPdf(filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+            const W = 210, margin = 18;
+            let y = 20;
+            const green  = [118, 147, 124];
+            const navy   = [44,  62,  80];
+            const gray   = [120, 120, 120];
+            const ltgray = [220, 220, 220];
+
+            function drawLine(color) {
+                doc.setDrawColor(color[0], color[1], color[2]);
+                doc.setLineWidth(0.3);
+                doc.line(margin, y, W - margin, y);
+                y += 5;
+            }
+            function drawText(str, x, size, color, align) {
+                doc.setFontSize(size || 11);
+                doc.setTextColor(color[0], color[1], color[2]);
+                doc.text(String(str || ''), x, y, { align: align || 'left' });
+            }
+            function row2(left, right, size, colorL, colorR) {
+                drawText(left,  margin,     size || 10, colorL || gray);
+                drawText(right, W - margin, size || 10, colorR || navy, 'right');
+                y += 6;
+            }
+
+            const el      = document.getElementById('invoice-printable');
+            const invId   = (el.querySelector('.inv-subtitle') || {}).textContent || filename;
+            const dateTxt = '';
+            const custEl  = el.querySelectorAll('.inv-info-block p');
+            let customer = '', payment = '';
+            custEl.forEach(function(p) {
+                if (p.textContent.includes(':')) {
+                    const parts = p.textContent.split(':');
+                    const key = parts[0].trim().toLowerCase();
+                    const val = parts.slice(1).join(':').trim();
+                    if (key.includes('customer') || key.includes('عميل')) customer = val;
+                    if (key.includes('payment')  || key.includes('دفع'))  payment  = val;
+                }
+            });
+
+            const itemRows = el.querySelectorAll('.inv-item-row');
+            const items = [];
+            itemRows.forEach(function(row) {
+                const name  = (row.querySelector('.inv-item-name')  || {}).textContent || '';
+                const qty   = (row.querySelector('.inv-item-qty')   || {}).textContent || '';
+                const price = (row.querySelector('.inv-item-price') || {}).textContent || '';
+                if (name) items.push({ name: name.trim(), qty: qty.split(':').pop().trim(), price: price.trim() });
+            });
+
+            const allRows = el.querySelectorAll('[style*="justify-content"]');
+            let subtotal = '', tax = '';
+            allRows.forEach(function(d) {
+                const spans = d.querySelectorAll('span');
+                if (spans.length >= 2) {
+                    const label = spans[0].textContent.trim().toLowerCase();
+                    const val   = spans[1].textContent.trim();
+                    if (label.includes('sub') || label.includes('قبل')) subtotal = val;
+                    if (label.includes('tax') || label.includes('ضريبة') || label.includes('ضريبه')) tax = val;
+                }
+            });
+            const totalEl = el.querySelector('.inv-total-value');
+            const total   = totalEl ? totalEl.textContent.trim() : '';
+
+            // ── Header
+            doc.setFillColor(green[0], green[1], green[2]);
+            doc.roundedRect(margin, y, W - margin*2, 22, 4, 4, 'F');
+            doc.setFontSize(16); doc.setTextColor(255, 255, 255);
+            doc.text('TAX INVOICE', W/2, y+9, { align:'center' });
+            doc.setFontSize(10);
+            doc.text(invId.trim(), W/2, y+16, { align:'center' });
+            y += 30;
+
+            // ── Date
+            const dateNode = el.querySelector('[style*="text-align:center"]');
+            if (dateNode) {
+                const d = dateNode.textContent.replace(/\s+/g, ' ').trim();
+                if (d) {
+                    doc.setFontSize(9); doc.setTextColor(gray[0], gray[1], gray[2]);
+                    doc.text(d, W/2, y, { align:'center' });
+                    y += 8;
+                }
+            }
+
+            // ── Info
+            drawLine(ltgray);
+            if (customer) row2('Customer:', customer, 10, gray, navy);
+            if (payment)  row2('Payment:',  payment,  10, gray, navy);
+            drawLine(ltgray);
+            y += 2;
+
+            // ── Items header
+            doc.setFillColor(245, 248, 246);
+            doc.rect(margin, y-2, W - margin*2, 8, 'F');
+            drawText('Item', margin+2, 9, navy); 
+            drawText('Qty', W/2, 9, navy, 'center'); 
+            drawText('Amount', W-margin-2, 9, navy, 'right');
+            y += 8;
+
+            // ── Items
+            items.forEach(function(item, i) {
+                if (i % 2 === 0) {
+                    doc.setFillColor(252, 252, 252);
+                    doc.rect(margin, y-4, W - margin*2, 8, 'F');
+                }
+                drawText(item.name,  margin+2,   10, [50,50,50]);
+                drawText(item.qty,   W/2,         10, gray, 'center');
+                drawText(item.price, W-margin-2,  10, navy, 'right');
+                y += 8;
+            });
+
+            y += 4; drawLine(ltgray);
+            if (subtotal) row2('Subtotal:',  subtotal, 10, gray, navy);
+            if (tax)      row2('VAT (15%):', tax,      10, gray, navy);
+            y += 2;
+
+            // ── Total
+            doc.setFillColor(green[0], green[1], green[2]);
+            doc.roundedRect(margin, y, W - margin*2, 12, 3, 3, 'F');
+            doc.setFontSize(13); doc.setTextColor(255,255,255);
+            doc.text('Total:', margin+5, y+8);
+            doc.text(total, W-margin-5, y+8, { align:'right' });
+            y += 20;
+
+            // ── Footer
+            doc.setFontSize(8); doc.setTextColor(gray[0], gray[1], gray[2]);
+            doc.text('Spending Journey', W/2, y, { align:'center' });
+
+            doc.save(filename + '.pdf');
+        }
+        
+        async function loadSidebarName() {
+            try {
+                const res  = await fetch('php/get_profile.php');
+                const data = await res.json();
+                if (data.facility_name) {
+                    const el = document.getElementById('ownerNameSide');
+                    if (el) { el.textContent = data.facility_name; }
+                }
+            } catch(e) {}
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        function toggleFilter(e) {
+            e.stopPropagation();
+            document.getElementById('filterDropdown').classList.toggle('show');
+        }
+
+        window.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                document.getElementById('filterDropdown').classList.remove('show');
+            }
+        });
+
+        function showEmpty(msg) {
+            document.getElementById('searchResultsContainer').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h2>${msg}</h2>
+                </div>`;
+        }
+    </script>
+
+    <script>
+        // Re-apply language after full page render
+        (function(){
+            var lang = localStorage.getItem("sj_language") || "en";
+            if(window.SettingsManager) SettingsManager.applyLanguage(lang);
+        })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/electricity_search.js"></script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owner Analysis - SmartBills</title>
+
+  <!--  settings_manager FIRST — before anything else — to avoid flash -->
+  <script src="js/settings_manager.js"></script>
+
+  <link rel="stylesheet" href="css/owner-analysis.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2999}
+    .sidebar-overlay.active{display:block}
+
+    /* RTL sidebar support */
+    [dir="rtl"] .sidebar{
+      left:auto !important;
+      right:calc(var(--sidebar-width, 280px) * -1) !important;
+      border-right:none;
+      border-left:1px solid #eee;
+    }
+    [dir="rtl"] .sidebar.active{ right:0 !important; left:auto !important; }
+    [dir="rtl"] .nav-item{ flex-direction:row-reverse; }
+    [dir="rtl"] .user-profile-side{ flex-direction:row-reverse; }
+    [dir="rtl"] .info{ text-align:right; }
+    [dir="rtl"] .menu-icon{ left:auto; right:18px; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="user-profile-side">
+      <div class="profile-icon-placeholder"><i class="fas fa-user"></i></div>
+      <div class="info">
+        <span id="ownerNameSide" style="font-weight:bold;color:#2C3E50;font-size:16px;display:block;">—</span>
+        <span style="font-size:12px;color:#888;" data-i18n="system_admin">System Admin</span>
+      </div>
+    </div>
+    <nav class="nav-menu">
+      <a href="home.html"      class="nav-item"><i class="fas fa-home"></i> <span data-i18n="nav_home">Home Page</span></a>
+      <a href="search.html"    class="nav-item"><i class="fas fa-search"></i> <span data-i18n="nav_search">Search Page</span></a>
+      <a href="analytics.html" class="nav-item active"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_analytics">Analytics Page</span></a>
+      <a href="profile.html"   class="nav-item"><i class="fas fa-user"></i> <span data-i18n="nav_profile">Profile Page</span></a>
+      <a href="settings.html"  class="nav-item"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Settings Page</span></a>
+      <a href="login.html"     class="nav-item sign-out"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_signout">Sign out</span></a>
+    </nav>
+  </aside>
+
+  <div class="dashboard">
+    <div class="top-bar">
+      <div class="menu-icon" aria-label="Menu" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Page title -->
+    <h1 class="page-title" data-i18n="ana_page_title">Analysis</h1>
+
+    <!-- Month picker -->
+    <div class="month-wrapper">
+      <button class="month-button" onclick="toggleMonths()">
+        <span class="month-left">
+          <span class="calendar-badge"></span>
+          <span id="selectedMonth" data-i18n="ana_select_month">Month</span>
+        </span>
+        <span class="arrow">▾</span>
+      </button>
+      <div class="month-list" id="monthList">
+        <div class="month-grid">
+          <div onclick="selectMonth('January')"><span   data-i18n="month_jan">Jan</span></div>
+          <div onclick="selectMonth('February')"><span  data-i18n="month_feb">Feb</span></div>
+          <div onclick="selectMonth('March')"><span     data-i18n="month_mar">Mar</span></div>
+          <div onclick="selectMonth('April')"><span     data-i18n="month_apr">Apr</span></div>
+          <div onclick="selectMonth('May')"><span       data-i18n="month_may">May</span></div>
+          <div onclick="selectMonth('June')"><span      data-i18n="month_jun">Jun</span></div>
+          <div onclick="selectMonth('July')"><span      data-i18n="month_jul">Jul</span></div>
+          <div onclick="selectMonth('August')"><span    data-i18n="month_aug">Aug</span></div>
+          <div onclick="selectMonth('September')"><span data-i18n="month_sep">Sep</span></div>
+          <div onclick="selectMonth('October')"><span   data-i18n="month_oct">Oct</span></div>
+          <div onclick="selectMonth('November')"><span  data-i18n="month_nov">Nov</span></div>
+          <div onclick="selectMonth('December')"><span  data-i18n="month_dec">Dec</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- Total Revenue -->
+      <div class="card top-card">
+        <div class="card-title" data-i18n="ana_total_revenue">Total Revenue</div>
+        <div class="amount-display">
+          <div class="big-number" id="totalRevenue">0</div>
+          <span class="currency-label" data-i18n="currency">SAR</span>
+        </div>
+      </div>
+
+      <!-- Price Distribution (AI) -->
+      <div class="card top-card ai-card trend-prediction-card revenue-ai-chart-card" id="revenueTrendPredictionCard">
+        <div class="revenue-card-header">
+          <div>
+            <div class="card-title" data-i18n="ana_price_dist">Total Price Distribution</div>
+          </div>
+          <button class="info-icon revenue-info-button" type="button"
+                  onclick="toggleTooltip('aiTipRevenue')" aria-label="Revenue forecast information">!</button>
+        </div>
+        <div class="revenue-ai-chart-wrap is-empty" id="revenueHistogramArea">
+          <canvas id="histChart"></canvas>
+          <div class="histogram-empty-state" id="revenueHistogramEmpty">
+            <span class="empty-state-icon">↗</span>
+            <strong data-i18n="ana_waiting_model">Waiting for model data</strong>
+            <p data-i18n="ana_connect_db">Connect your database and AI model to display the predicted revenue based on quantity.</p>
+          </div>
+        </div>
+        <div class="ai-subtext" id="expectedRevenueStatus" data-i18n="ana_histogram_wait">
+          The histogram will appear after the model returns real analysis data.
+        </div>
+        <div class="tooltip" id="aiTipRevenue" data-i18n="ana_ai_tip">
+          These smart tips are generated by AI based on your sales, products, and customer activity.
+        </div>
+      </div>
+
+      <!-- Total Invoices -->
+      <div class="card top-card">
+        <div class="card-title" data-i18n="ana_total_invoices">Total Invoices</div>
+        <div class="big-number" id="totalInvoices">0</div>
+      </div>
+
+      <!-- Avg Order Value -->
+      <div class="card top-card">
+        <div class="card-title" data-i18n="ana_avg_order">Avg Order Value</div>
+        <div class="amount-display">
+          <div class="big-number" id="avgOrderValue">0</div>
+          <span class="currency-label" data-i18n="currency">SAR</span>
+        </div>
+      </div>
+
+      <!-- Payment Distribution -->
+      <div class="card middle-small">
+        <div class="card-title" data-i18n="ana_payment_dist">Payment Distribution</div>
+        <div class="pie-area"><canvas id="paymentPie"></canvas></div>
+        <div class="payment-legend" id="paymentLegend"></div>
+      </div>
+
+      <!-- Top Selling Items -->
+      <div class="card middle-small">
+        <div class="card-title" data-i18n="ana_top_items">Top Selling Items</div>
+        <div class="items-list" id="topSellingItems">
+          <div class="empty-note" data-i18n="ana_no_data">No data yet</div>
+        </div>
+      </div>
+
+      <!-- Monthly Revenue Target -->
+      <div class="card target-card">
+        <div class="card-title" data-i18n="ana_monthly_target">Monthly Revenue Target</div>
+        <div class="target-content">
+          <div class="target-input-box">
+            <input id="revenueTarget" class="target-input" type="number"
+                   placeholder="0" oninput="updateRevenueTarget()">
+            <div class="target-currency" data-i18n="ana_sar_target">SAR target</div>
+          </div>
+          <div class="target-bar-area">
+            <div class="target-bar"><div class="target-fill" id="targetFill"></div></div>
+            <div class="target-text" id="targetText"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue Trend -->
+<div class="card revenue-trend-custom-card">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:0;" data-i18n="ana_revenue_trend">
+      Revenue Trend
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span id="trendDirBadge"
+            style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px;">
+        ▲ +0%
+      </span>
+
+      <div style="display:flex; gap:6px;">
+        <span id="btnMonthly"
+              style="font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; cursor:pointer;"
+              onclick="setTrendView('monthly',this)">
+          Monthly
+        </span>
+
+        <span id="btnCumul"
+              style="font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; cursor:pointer;"
+              onclick="setTrendView('cumulative',this)">
+          Cumulative
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
+    <div style="background:var(--brand-green-soft); border:1px solid var(--soft-border); border-radius:12px; padding:10px; text-align:center;">
+      <div style="font-size:11px; font-weight:900; color:var(--text-soft);">Peak Month</div>
+      <div id="trendPeakMonth" style="font-size:16px; font-weight:900;">—</div>
+    </div>
+
+    <div style="background:var(--brand-green-soft); border:1px solid var(--soft-border); border-radius:12px; padding:10px; text-align:center;">
+      <div style="font-size:11px; font-weight:900; color:var(--text-soft);">vs Last Month</div>
+      <div id="trendVsLast" style="font-size:16px; font-weight:900;">—</div>
+    </div>
+
+    <div style="background:var(--brand-green-soft); border:1px solid var(--soft-border); border-radius:12px; padding:10px; text-align:center;">
+      <div style="font-size:11px; font-weight:900; color:var(--text-soft);">YTD Total</div>
+      <div id="trendYtd" style="font-size:16px; font-weight:900;">—</div>
+    </div>
+  </div>
+
+  <div style="position:relative;height:250px;margin-bottom:14px;">
+    <canvas id="revenueTrendChart"
+            role="img"
+            aria-label="Monthly revenue trend chart">
+    </canvas>
+  </div>
+
+  <div id="trendMonthPills"></div>
+
+</div>
+
+      <!-- Product Demand Breakdown -->
+      <div class="card product-breakdown-custom-card">
+        <div class="card-title" data-i18n="ana_demand">Product Demand Breakdown</div>
+        <div class="donut-layout">
+          <canvas class="donut" id="breakdownDonut"></canvas>
+          <div class="category-list" id="breakdownList"></div>
+        </div>
+      </div>
+
+      
+
+    </div><!-- /.grid -->
+  </div><!-- /.dashboard -->
+
+  <script src="js/owner-analysis.js"></script>
+  <script src="price-distribution.js"></script>
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+
+    async function loadSidebarName() {
+      try {
+        const res  = await fetch('php/get_profile.php');
+        const data = await res.json();
+        if (data.facility_name) {
+          const el = document.getElementById('ownerNameSide');
+          if (el) { el.textContent = data.facility_name; }
+        }
+      } catch(e) {}
+    }
+    loadSidebarName();
+
+    // Re-apply after full load to catch any elements rendered late
+    window.addEventListener('load', function() {
+      SettingsManager.applyLanguage(SettingsManager.getLanguage());
+    });
+  </script>
+</body>
+</html>

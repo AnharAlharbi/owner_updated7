@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="js/settings_manager.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Spending Journey</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --petrol-blue: #2C3E50;
+            --sage-green: #76937C;
+            --bg-light: #f4f7f6;
+            --sidebar-width: 280px;
+        }
+
+        body { 
+            margin: 0; font-family: 'Segoe UI', sans-serif; background-color: var(--bg-light); 
+            display: flex; overflow-x: hidden;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width); height: 100vh; background: white; border-right: 1px solid #eee;
+            position: fixed; top: 0; left: calc(var(--sidebar-width) * -1); 
+            z-index: 3000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;
+        }
+        .sidebar.active { left: 0; }
+        [dir="rtl"] .sidebar { left: auto; right: calc(var(--sidebar-width) * -1); }
+        [dir="rtl"] .sidebar.active { right: 0; left: auto; }
+
+        .user-profile-section {
+            display: flex; align-items: center; gap: 15px; padding: 20px 10px; margin-bottom: 20px;
+        }
+        .user-avatar-circle {
+            width: 50px; height: 50px; background: #f0f0f0; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: #888;
+        }
+
+        .nav-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 15px; padding: 12px 15px;
+            color: #666; text-decoration: none; border-radius: 12px; margin-bottom: 5px; transition: 0.3s;
+        }
+        .nav-item:hover, .nav-item.active { background-color: #f0f4f2; color: var(--sage-green); font-weight: 500; }
+        .sign-out { color: #e74c3c; margin-top: auto; border-top: 1px solid #eee; padding-top: 15px; }
+
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: none; z-index: 2500; }
+        .overlay.active { display: block; }
+
+        .main-wrapper { width: 100%; }
+        header {
+            background-color: var(--sage-green); height: 70px; display: flex; align-items: center;
+            justify-content: space-between; padding: 0 25px; color: white;
+        }
+
+        .container { 
+            display: flex; justify-content: center; align-items: flex-start; 
+            padding: 40px 20px; min-height: calc(100vh - 70px); 
+        }
+
+        .profile-card {
+            background: white; width: 100%; max-width: 500px; padding: 40px;
+            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .profile-main-icon {
+            width: 90px; height: 90px; background: #f8f8f8; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 15px; border: 2px solid #eee;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: 0.2s; flex-shrink: 0;
+        }
+        .profile-main-icon:hover { border-color: var(--sage-green); }
+        .profile-main-icon:hover::after {
+            content: '\f044'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(118,147,124,0.82); color: white;
+            font-size: 13px; padding: 5px 0; text-align: center;
+        }
+        .profile-main-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+        /* Avatar picker modal */
+        .avatar-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 9000;
+            align-items: center; justify-content: center;
+        }
+        .avatar-modal-overlay.open { display: flex; }
+        .avatar-modal {
+            background: white; border-radius: 20px; padding: 30px 28px;
+            width: 300px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: popIn 0.25s ease;
+        }
+        @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .avatar-modal h3 { margin: 0 0 6px; color: var(--petrol-blue); font-size: 18px; }
+        .avatar-modal p { margin: 0 0 24px; color: #999; font-size: 13px; }
+        .avatar-options { display: flex; justify-content: center; gap: 24px; }
+        .avatar-option {
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            cursor: pointer; padding: 14px 18px; border-radius: 16px;
+            border: 2px solid #eee; transition: 0.2s; flex: 1;
+        }
+        .avatar-option:hover { border-color: var(--sage-green); background: #f5f9f6; }
+        .avatar-option.selected { border-color: var(--sage-green); background: #edf4ee; }
+        .avatar-option img { width: 70px; height: 70px; object-fit: contain; }
+        .avatar-option span { font-size: 13px; color: #555; font-weight: 500; }
+
+        .company-name { font-size: 24px; color: var(--petrol-blue); margin-bottom: 10px; font-weight: 500; }
+
+        /* CR badge shown outside/above the detail list */
+        .cr-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #f0f4f2; border: 1.5px solid #d0ddd3;
+            border-radius: 30px; padding: 6px 18px;
+            margin-bottom: 24px; color: var(--petrol-blue);
+            font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+        }
+        .cr-badge i { color: var(--sage-green); font-size: 13px; }
+
+        /* view mode */
+        .info-group { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+        .info-label { display: block; font-size: 13px; color: #999; margin-bottom: 5px; }
+        .info-value { display: block; font-size: 16px; color: #444; font-weight: 500; }
+
+        /* edit mode */
+        .edit-form { display: none; text-align: left; }
+        .edit-form.active { display: block; }
+        .view-info.hidden { display: none; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block; font-size: 13px; color: #999; margin-bottom: 6px; font-weight: 500;
+        }
+        .form-group input {
+            width: 100%; padding: 11px 14px; border: 1.5px solid #e0e0e0;
+            border-radius: 10px; font-size: 15px; color: #444; outline: none;
+            box-sizing: border-box; transition: 0.3s;
+        }
+        .form-group input:focus { border-color: var(--sage-green); background: #fafafa; }
+        .form-group input[readonly] { background: #f5f5f5; color: #aaa; cursor: not-allowed; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 30px; }
+        .btn-row { display: flex; gap: 10px; }
+        .btn {
+            padding: 13px; border-radius: 10px; border: none; cursor: pointer;
+            font-size: 14px; transition: 0.3s; font-weight: 500; text-decoration: none; text-align: center; flex: 1;
+        }
+        .btn-primary { background-color: var(--sage-green); color: white; }
+        .btn-secondary { background-color: #e8eee9; color: #666; }
+        .btn-danger { background-color: #fdecea; color: #e74c3c; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: #2C3E50; color: white; padding: 12px 24px; border-radius: 10px;
+            font-size: 14px; opacity: 0; transition: 0.35s; z-index: 9999; white-space: nowrap;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: var(--sage-green); }
+        .toast.error { background: #e74c3c; }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="user-profile-section">
+            <div class="user-avatar-circle"><i class="fas fa-user fa-lg"></i></div>
+            <div>
+                <div id="sidebarName" style="font-weight: bold; color: var(--petrol-blue);">—</div>
+                <small style="color: #999;" data-i18n="system_admin">System Admin</small>
+            </div>
+        </div>
+        <nav class="nav-menu">
+            <a href="home.html" class="nav-item"><i class="fas fa-home"></i> <span data-i18n="nav_home">Home Page</span></a>
+            <a href="search.html" class="nav-item"><i class="fas fa-search"></i> <span data-i18n="nav_search">Search Page</span></a>
+            <a href="analytics.html" class="nav-item"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_analytics">Analytics Page</span></a>
+            <a href="profile.html" class="nav-item active"><i class="fas fa-user"></i> <span data-i18n="nav_profile">Profile Page</span></a>
+            <a href="settings.html" class="nav-item"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Settings Page</span></a>
+            <a href="login.html" class="nav-item sign-out"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_signout">Sign out</span></a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper">
+        <header>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i class="fas fa-bars" style="cursor: pointer; font-size: 20px;" onclick="toggleSidebar()"></i>
+                <span style="font-size: 20px; font-weight: 500;" data-i18n="title_profile">Profile</span>
+            </div>
+            <div style="width: 35px; height: 35px; border: 1.5px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user"></i></div>
+        </header>
+
+        <div class="container">
+            <div class="profile-card">
+                <div class="profile-main-icon" id="profileAvatarBtn" onclick="openAvatarModal()" title="Change avatar">
+                    <img id="profileAvatarImg" src="" alt="avatar" style="display:none;">
+                    <i class="fas fa-user" id="profileAvatarIcon" style="color:#ccc; font-size:35px;"></i>
+                </div>
+                <div class="company-name" id="profileFacilityName">—</div>
+
+                <!-- CR Number Badge (always visible) -->
+                <div class="cr-badge" id="crBadge">
+                    <i class="fas fa-id-card"></i>
+                    <span data-i18n="pro_cr_badge_label">CR</span>:&nbsp;<span id="profileCRBadge">—</span>
+                </div>
+
+                <!-- View Mode -->
+                <div class="view-info" id="viewInfo">
+                    <div class="info-group">
+                        <span class="info-label" data-i18n="pro_facility">Facility number (CR)</span>
+                        <span class="info-value" id="profileCR">—</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label" data-i18n="pro_phone">Phone Number</span>
+                        <span class="info-value" id="profilePhone">—</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label" data-i18n="pro_email">E-mail</span>
+                        <span class="info-value" id="profileEmail">—</span>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="switchToEdit()" data-i18n="pro_modify">Edit Profile</button>
+                    </div>
+                </div>
+
+                <!-- Edit Mode -->
+                <div class="edit-form" id="editForm">
+                    <div class="form-group">
+                        <label data-i18n="pro_facility_label">Facility Name</label>
+                        <input type="text" id="editFacilityName" placeholder="Facility Name">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pro_cr_label">CR Number</label>
+                        <input type="text" id="editCR" placeholder="CR Number">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pro_phone_label">Phone Number</label>
+                        <input type="tel" id="editPhone" placeholder="05xxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pro_email_label">E-mail</label>
+                        <input type="email" id="editEmail" placeholder="example@mail.com">
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-primary" id="saveBtn" onclick="saveProfile()" data-i18n="pro_save">Save Changes</button>
+                        <button class="btn btn-danger" onclick="cancelEdit()" data-i18n="pro_cancel">Cancel</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Avatar picker modal -->
+    <div class="avatar-modal-overlay" id="avatarModalOverlay" onclick="closeAvatarModal(event)">
+        <div class="avatar-modal">
+            <h3 data-i18n="avatar_title">Choose Your Avatar</h3>
+            <p data-i18n="avatar_sub">Select an avatar to represent you</p>
+            <div class="avatar-options">
+                <div class="avatar-option" id="avatarOptMale" onclick="selectAvatar('male')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4140/4140048.png" alt="male">
+                    <span data-i18n="avatar_male">Male</span>
+                </div>
+                <div class="avatar-option" id="avatarOptFemale" onclick="selectAvatar('female')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/6997/6997662.png" alt="female">
+                    <span data-i18n="avatar_female">Female</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        let currentData = {};
+
+        async function loadProfile() {
+            try {
+                const res  = await fetch('php/get_profile.php');
+                const data = await res.json();
+
+                if (data.error) {
+                    if (data.error === 'not_logged_in') window.location.href = 'login.html';
+                    return;
+                }
+
+                currentData = data;
+                renderView(data);
+                loadAvatarForCurrentOwner(); 
+
+            } catch (err) {
+                console.error('Failed to load profile:', err);
+            }
+        }
+
+        function renderView(data) {
+            document.getElementById('profileFacilityName').textContent = data.facility_name || '—';
+            document.getElementById('profileCRBadge').textContent      = data.cr_number    || '—';
+            document.getElementById('profileCR').textContent           = data.cr_number    || '—';
+            document.getElementById('profilePhone').textContent        = data.phone        || '—';
+            document.getElementById('profileEmail').textContent        = data.email        || '—';
+            document.getElementById('sidebarName').textContent         = data.facility_name || 'Owner';
+        }
+
+        function switchToEdit() {
+            document.getElementById('editFacilityName').value = currentData.facility_name || '';
+            document.getElementById('editCR').value           = currentData.cr_number    || '';
+            document.getElementById('editPhone').value        = currentData.phone        || '';
+            document.getElementById('editEmail').value        = currentData.email        || '';
+
+            document.getElementById('viewInfo').classList.add('hidden');
+            document.getElementById('editForm').classList.add('active');
+        }
+
+        function cancelEdit() {
+            document.getElementById('editForm').classList.remove('active');
+            document.getElementById('viewInfo').classList.remove('hidden');
+        }
+
+        async function saveProfile() {
+            const btn          = document.getElementById('saveBtn');
+            const facilityName = document.getElementById('editFacilityName').value.trim();
+            const phone        = document.getElementById('editPhone').value.trim();
+            const email        = document.getElementById('editEmail').value.trim();
+
+            if (!facilityName || !phone || !email) {
+                showToast('Please fill in all fields', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            try {
+                const crNumber = document.getElementById('editCR').value.trim();
+
+                const formData = new FormData();
+                formData.append('facility_name', facilityName);
+                formData.append('cr_number',     crNumber);
+                formData.append('phone',         phone);
+                formData.append('email',         email);
+
+                const res  = await fetch('php/update_profile.php', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentData.facility_name = facilityName;
+                    currentData.cr_number     = crNumber;
+                    currentData.phone         = phone;
+                    currentData.email         = email;
+
+                    renderView(currentData);
+                    cancelEdit();
+                    showToast('Profile updated successfully ✓', 'success');
+
+                } else if (data.error === 'email_taken') {
+                    showToast('This email is already used', 'error');
+                } else if (data.error === 'cr_taken') {
+                    showToast('This CR Number is already used', 'error');
+                } else if (data.error === 'empty_fields') {
+                    showToast('Please fill in all fields', 'error');
+                } else {
+                    showToast('Update failed. Please try again.', 'error');
+                }
+
+            } catch (err) {
+                console.error(err);
+                showToast('Connection error', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = window.SettingsManager ? SettingsManager.getT('pro_save') : 'Save Changes';
+            }
+        }
+
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast' + (type ? ' ' + type : '');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        const AVATAR_URLS = {
+            male:   'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+            female: 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png'
+        };
+
+        function avatarKey() {
+            const id = currentData.email || currentData.cr_number || 'default';
+            return 'sj_avatar_' + id;
+        }
+
+        function applyAvatar(gender) {
+            const img  = document.getElementById('profileAvatarImg');
+            const icon = document.getElementById('profileAvatarIcon');
+            if (gender && AVATAR_URLS[gender]) {
+                img.src = AVATAR_URLS[gender];
+                img.style.display = 'block';
+                icon.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                icon.style.display = 'block';
+            }
+        }
+
+        function openAvatarModal() {
+            const saved = localStorage.getItem(avatarKey());
+            document.getElementById('avatarOptMale').classList.toggle('selected', saved === 'male');
+            document.getElementById('avatarOptFemale').classList.toggle('selected', saved === 'female');
+            document.getElementById('avatarModalOverlay').classList.add('open');
+        }
+
+        function closeAvatarModal(e) {
+            if (e.target === document.getElementById('avatarModalOverlay'))
+                document.getElementById('avatarModalOverlay').classList.remove('open');
+        }
+
+        function selectAvatar(gender) {
+            localStorage.setItem(avatarKey(), gender);
+            applyAvatar(gender);
+            document.getElementById('avatarModalOverlay').classList.remove('open');
+            showToast('✓', 'success');
+        }
+
+        function loadAvatarForCurrentOwner() {
+            applyAvatar(localStorage.getItem(avatarKey()));
+        }
+
+        loadProfile();
+    </script>
+    <script>
+        (function(){
+            var lang = localStorage.getItem("sj_language") || "en";
+            if(window.SettingsManager) SettingsManager.applyLanguage(lang);
+        })();
+    </script>
+</body>
+</html>

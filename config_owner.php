@@ -12,16 +12,14 @@ if ($conn->connect_error) {
     die("فشل الاتصال بقاعدة البيانات: " . $conn->connect_error);
 }
 
-// 2. دالة ذكية لتشغيل ملفات الـ SQL تلقائياً إذا لم تكن الجداول موجودة
-function deploySqlFile($connection, $fileName) {
-    if (!file_exists($fileName)) {
-        return; // إذا كان الملف غير موجود يتخطاه
+// 2. دالة تقرأ ملفات الـ SQL وتنفذها داخل Aiven
+function executeSqlFile($connection, $filePath) {
+    if (!file_exists($filePath)) {
+        return; 
     }
-    
-    $sql = file_get_contents($fileName);
-    // تقسيم الأوامر عند كل فاصلة منقوطة ;
+    $sql = file_get_contents($filePath);
+    // تنظيف الأوامر وتقسيمها
     $queries = explode(';', $sql);
-    
     foreach ($queries as $query) {
         $query = trim($query);
         if (!empty($query)) {
@@ -30,10 +28,9 @@ function deploySqlFile($connection, $fileName) {
     }
 }
 
-// 3. تشغيل ملفات الـ SQL الأربعة وبناء الجداول فوراً
-deploySqlFile($conn, "users1.sql");
-deploySqlFile($conn, "owner1.sql");
-deploySqlFile($conn, "invoice1.sql");
-deploySqlFile($conn, "electricity1.sql");
+// 3. بناء الجداول الأربعة تلقائياً
+executeSqlFile($conn, "users1.sql");
+executeSqlFile($conn, "owner1.sql");
+executeSqlFile($conn, "invoice1.sql");
+executeSqlFile($conn, "electricity1.sql");
 ?>
-

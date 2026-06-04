@@ -83,6 +83,14 @@ td { padding: 15px; border-bottom: 1px solid #f9f9f9; color: var(--petrol-blue);
     background: var(--sage-green);
     color: white; border: none; padding: 5px 12px;
     border-radius: 5px; cursor: pointer;
+    width: 70px; display: inline-block; text-align: center;
+}
+
+td:last-child {
+    text-align: right;
+    white-space: nowrap;
+    padding-right: 24px;
+    width: 1%;
 }
 
 /* Profile Icon */
@@ -91,7 +99,7 @@ td { padding: 15px; border-bottom: 1px solid #f9f9f9; color: var(--petrol-blue);
     border: 1.5px solid white; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white;
 }
 
-/* --- Modal  --- */
+/* --- Modal (نفس search.html) --- */
 #invoiceModal {
     display: none;
     position: fixed;
@@ -124,7 +132,7 @@ td { padding: 15px; border-bottom: 1px solid #f9f9f9; color: var(--petrol-blue);
 }
 .modal-close:hover { color: #e74c3c; }
 
-
+/* محتوى الفاتورة */
 .inv-title { text-align: center; font-size: 22px; font-weight: 900; color: var(--petrol-blue); letter-spacing: 2px; margin-bottom: 5px; }
 .inv-subtitle { text-align: center; font-size: 13px; color: #a1aeb8; margin-bottom: 25px; }
 
